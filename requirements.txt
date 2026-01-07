@@ -1,2 +1,7 @@
 fastapi
 uvicorn
+python-multipart
+requests
+pdfplumber
+icalendar
+python-dateutil
