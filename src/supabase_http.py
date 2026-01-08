@@ -54,11 +54,13 @@ def db_update_import(import_id: str, patch: dict):
     r.raise_for_status()
 
 def storage_delete_by_url(file_url: str):
-    marker = f"/storage/v1/object/sign/{BUCKET}/"
-    if marker not in file_url:
+    try:
+        marker = f"/storage/v1/object/sign/{BUCKET}/"
+        if marker not in file_url:
+            return
+        path = file_url.split(marker, 1)[1].split("?", 1)[0]
+        url = f"{SUPABASE_URL}/storage/v1/object/{BUCKET}/{path}"
+        requests.delete(url, headers=_headers(), timeout=30)
+    except Exception:
         return
-    path = file_url.split(marker, 1)[1].split("?", 1)[0]
-    url = f"{SUPABASE_URL}/storage/v1/object/{BUCKET}/{path}"
-    r = requests.delete(url, headers=_headers(), timeout=30)
-    if r.status_code not in (200, 204, 404):
-        r.raise_for_status()
+
