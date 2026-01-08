@@ -1,4 +1,7 @@
 import traceback
+import requests
+from src.parsers.dispatch import run_parser
+from src.supabase_http import db_insert_events
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -40,26 +43,51 @@ def parse(req: ParseRequest):
     })
 
     try:
-        tipo_input = "pdf_text"
+        # 1) download PDF
+        r = requests.get(req.file_url, timeout=60)
+        r.raise_for_status()
+        pdf_bytes = r.content
 
+        # 2) tipo_input (fixo por agora para bater com os templates)
+        tipo_input = "pdf_hibrido"
+
+        # 3) selecionar template
         tpl = db_select_template(req.instituicao_id, req.categoria, tipo_input)
         if not tpl:
             db_update_import(imp["id"], {"status": "failed", "tipo_input": tipo_input, "error_code": "NO_TEMPLATE"})
             raise HTTPException(status_code=400, detail="NO_TEMPLATE")
 
+        # 4) guardar template no import
         db_update_import(imp["id"], {"tipo_input": tipo_input, "template_id": tpl["id"]})
 
+        # 5) correr parser
+        events = run_parser(tpl["template_code"], pdf_bytes, req.mecanografico)
+
+        # 6) inserir events
+        rows = [{
+            "import_id": imp["id"],
+            "data": e["data"],
+            "hora_inicio": e["hora_inicio"],
+            "hora_fim": e["hora_fim"],
+            "raw_code": e["raw_code"],
+            "titulo": e["titulo"],
+        } for e in events]
+
+        db_insert_events(rows)
+
+        # 7) marcar success
         db_update_import(imp["id"], {"status": "success"})
-        storage_delete_by_url(req.file_url)
-        return {"import_id": imp["id"], "template_id": tpl["id"], "events_count": 0}
+
+        # 8) tentar apagar ficheiro (não pode rebentar o parse)
+        try:
+            storage_delete_by_url(req.file_url)
+        except Exception:
+            pass
+
+        return {"import_id": imp["id"], "template_id": tpl["id"], "events_count": len(rows)}
 
     except HTTPException:
         raise
-    
-    except Exception as e:
-        print("PARSE_ERROR:", repr(e))
-        print(traceback.format_exc())
+    except Exception:
         db_update_import(imp["id"], {"status": "failed", "error_code": "SERVER_ERROR"})
         raise HTTPException(status_code=500, detail="SERVER_ERROR")
-
-
