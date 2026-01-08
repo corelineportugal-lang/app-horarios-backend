@@ -1,7 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from src.supabase_http import db_insert_import, db_update_import, db_select_template
+from src.supabase_http import db_insert_import, db_update_import, db_select_template, storage_delete_by_url
+
 
 app = FastAPI(openapi_url="/openapi.json", docs_url="/docs")
 
@@ -47,6 +48,7 @@ def parse(req: ParseRequest):
         db_update_import(imp["id"], {"tipo_input": tipo_input, "template_id": tpl["id"]})
 
         db_update_import(imp["id"], {"status": "success"})
+        storage_delete_by_url(req.file_url)
         return {"import_id": imp["id"], "template_id": tpl["id"], "events_count": 0}
 
     except HTTPException:
