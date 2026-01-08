@@ -1,3 +1,5 @@
+import traceback
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
@@ -53,7 +55,11 @@ def parse(req: ParseRequest):
 
     except HTTPException:
         raise
-    except Exception:
+    
+    except Exception as e:
+        print("PARSE_ERROR:", repr(e))
+        print(traceback.format_exc())
         db_update_import(imp["id"], {"status": "failed", "error_code": "SERVER_ERROR"})
         raise HTTPException(status_code=500, detail="SERVER_ERROR")
+
 
