@@ -52,3 +52,6 @@ def db_update_import(import_id: str, patch: dict):
     params = {"id": f"eq.{import_id}"}
     r = requests.patch(url, headers=_headers(), params=params, json=patch, timeout=30)
     r.raise_for_status()
+
+def storage_delete_by_url(file_url: str):
+    return
