@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-app = FastAPI()
+app = FastAPI(openapi_url="/openapi.json", docs_url="/docs")
 
 @app.get("/")
 def root():
