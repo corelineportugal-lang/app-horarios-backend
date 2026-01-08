@@ -64,3 +64,10 @@ def storage_delete_by_url(file_url: str):
     except Exception:
         return
 
+def db_insert_events(rows: list):
+    if not rows:
+        return
+    url = f"{SUPABASE_URL}/rest/v1/events"
+    r = requests.post(url, headers=_headers(), json=rows, timeout=30)
+    r.raise_for_status()
+
